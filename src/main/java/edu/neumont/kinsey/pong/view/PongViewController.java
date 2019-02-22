@@ -10,6 +10,9 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Alert.AlertType;
+import javafx.scene.control.ButtonType;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseButton;
@@ -30,8 +33,12 @@ public class PongViewController implements PongView {
 
 	private GraphicsContext ctx;
 
-	private int canvasCenterX;
-	private int canvasCenterY;
+	private int canvasWidth = 1280;
+	private int canvasHeight = 720;
+	
+	private int canvasCenterX = canvasWidth / 2;
+	private int canvasCenterY = canvasHeight / 2;
+	
 	private int centerLineWidth = 2;
 
 	private int paddleHeight = 80;
@@ -64,6 +71,8 @@ public class PongViewController implements PongView {
 	private boolean running = false, paused = false;
 
 	private boolean leftPressed = false, rightPressed = false;
+	
+	private boolean win = false;
 
 	private Timeline pongTimeline;
 
@@ -80,18 +89,17 @@ public class PongViewController implements PongView {
 	}
 
 	public void init() {
-		this.stage.setTitle("Pong");
-		canvasCenterX = (int) (pongCanvas.getWidth() / 2);
-		canvasCenterY = (int) (pongCanvas.getHeight() / 2);
-		paddle1PosX = (int) (50);
-		paddle2PosX = (int) (pongCanvas.getWidth() - 50 - paddleWidth);
+		paddle1PosX = 50;
+		paddle2PosX = canvasWidth - 50 - paddleWidth;
 		paddle1PosY = canvasCenterY - paddleHeight / 2;
 		paddle2PosY = canvasCenterY - paddleHeight / 2;
 		ballPosX = canvasCenterX - ballSize / 2;
 		ballPosY = canvasCenterY - ballSize / 2;
 		ctx = pongCanvas.getGraphicsContext2D();
 		pongCanvas.requestFocus();
+		ctx.setFont(Font.font("Press Start 2P", letterFontSize));
 		drawStartScreen();
+		this.stage.setTitle("Pong");
 		this.stage.setResizable(false);
 		this.stage.show();
 	}
@@ -101,14 +109,13 @@ public class PongViewController implements PongView {
 		drawPaddles();
 		drawScore();
 		drawMedian();
-		ctx.setFont(Font.font("Press Start 2P", letterFontSize));
 		ctx.fillText("CLICK To Start", canvasCenterX - 300, canvasCenterY);
 	}
 
 	public void onKeyPressed(KeyEvent e) {
 		if (running) {
 			// Toggle pause when escape is pressed while game running
-			if (e.getCode().equals(KeyCode.ESCAPE)) {
+			if (e.getCode().equals(KeyCode.ESCAPE) && !win) {
 				if (paused) {
 					paused = false;
 
@@ -120,7 +127,7 @@ public class PongViewController implements PongView {
 
 					// Pause physics and display paused text
 					pongTimeline.pause();
-					ctx.fillText("Paused", canvasCenterX - 150, canvasCenterY);
+					ctx.fillText("Paused", canvasCenterX - 125, canvasCenterY);
 
 				}
 			}
@@ -165,18 +172,18 @@ public class PongViewController implements PongView {
 
 	private void draw() {
 		ctx.setFill(Color.BLACK);
-		ctx.fillRect(0, 0, pongCanvas.getWidth(), pongCanvas.getHeight());
+		ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 		ctx.setFill(objectColor);
-		physics();
+		paddleBouncePhysics();
+		paddleMovementPhysics();
+		ballMovementPhysics();
 		drawMedian();
 		drawScore();
 		drawPaddles();
 		drawBall();
-		paddleMovement();
-		ballMovement();
 	}
 
-	private void physics() {
+	private void paddleBouncePhysics() {
 		// Only check to see if the ball can be hit after passing the middle
 		if (ballHittable) {
 			// Left paddle hit
@@ -205,7 +212,7 @@ public class PongViewController implements PongView {
 		}
 	}
 
-	private void ballMovement() {
+	private void ballMovementPhysics() {
 		if (!ballMoving && bufferCount <= 60) {
 			bufferCount++;
 		} else if (!ballMoving && bufferCount > 60) {
@@ -218,7 +225,7 @@ public class PongViewController implements PongView {
 				ballYVel = vel * -1;
 			}
 		}
-		
+
 		if (player1Score == 11 || player2Score == 11) {
 			pongTimeline.stop();
 			win();
@@ -226,7 +233,7 @@ public class PongViewController implements PongView {
 
 		if (ballMoving) {
 
-			if (ballPosY + ballSize >= pongCanvas.getHeight() || ballPosY <= 0) {
+			if (ballPosY + ballSize >= canvasHeight || ballPosY <= 0) {
 				ballYVel *= -1;
 			}
 
@@ -244,7 +251,7 @@ public class PongViewController implements PongView {
 			}
 
 			// If it goes off the Right Side
-			if (ballHittable && ballPosX > pongCanvas.getWidth()) {
+			if (ballHittable && ballPosX > canvasWidth) {
 				player1Score++;
 				score();
 			}
@@ -255,7 +262,7 @@ public class PongViewController implements PongView {
 		ballMoving = false;
 		bufferCount = 0;
 		paddle1PosX = 50;
-		paddle2PosX = (int) (pongCanvas.getWidth() - 50 - paddleWidth);
+		paddle2PosX = canvasWidth - 50 - paddleWidth;
 		paddle1PosY = canvasCenterY - paddleHeight / 2;
 		paddle2PosY = canvasCenterY - paddleHeight / 2;
 		ballPosX = canvasCenterX - ballSize / 2;
@@ -263,6 +270,7 @@ public class PongViewController implements PongView {
 	}
 
 	private void win() {
+		win = true;
 		if (player1Score > player2Score) {
 			ctx.fillText("WINNER", canvasCenterX - 400, canvasCenterY);
 		} else {
@@ -270,13 +278,13 @@ public class PongViewController implements PongView {
 		}
 	}
 
-	private void paddleMovement() {
+	private void paddleMovementPhysics() {
 		if (leftPressed) {
 			if (paddle1PosY >= 0) {
 				paddle1PosY -= paddleVel;
 			}
 		} else {
-			if (paddle1PosY + paddleHeight <= pongCanvas.getHeight()) {
+			if (paddle1PosY + paddleHeight <= canvasHeight) {
 				paddle1PosY += paddleVel;
 			}
 		}
@@ -286,7 +294,7 @@ public class PongViewController implements PongView {
 				paddle2PosY -= paddleVel;
 			}
 		} else {
-			if (paddle2PosY + paddleHeight <= pongCanvas.getHeight()) {
+			if (paddle2PosY + paddleHeight <= canvasHeight) {
 				paddle2PosY += paddleVel;
 			}
 		}
@@ -302,7 +310,6 @@ public class PongViewController implements PongView {
 	}
 
 	private void drawScore() {
-		ctx.setFont(Font.font("Press Start 2P", numberFontSize));
 		if (player1Score > 9) {
 			ctx.fillText("" + player1Score, canvasCenterX - numberFontSize * 2 - numberPadding,
 					numberFontSize + numberPadding);
@@ -314,7 +321,7 @@ public class PongViewController implements PongView {
 	}
 
 	private void drawMedian() {
-		ctx.fillRect(canvasCenterX - centerLineWidth, 0, centerLineWidth, pongCanvas.getHeight());
+		ctx.fillRect(canvasCenterX - centerLineWidth, 0, centerLineWidth, canvasHeight);
 	}
 
 	public void onRestartAction(ActionEvent e) {
@@ -326,7 +333,15 @@ public class PongViewController implements PongView {
 	}
 
 	public void onAboutAction(ActionEvent e) {
-
+		if (pongTimeline != null) {
+			pongTimeline.pause();
+			new Alert(AlertType.INFORMATION, "This game of Pong was made by Gaige Kinsey.", ButtonType.CLOSE).showAndWait();
+			if (!paused) {
+				pongTimeline.play();
+			}
+		} else {
+			new Alert(AlertType.INFORMATION, "This game of Pong was made by Gaige Kinsey.", ButtonType.CLOSE).showAndWait();
+		}
 	}
 
 	public void shutdown() {
