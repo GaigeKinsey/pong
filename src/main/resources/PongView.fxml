@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.control.MenuBar?>
+<?import javafx.scene.control.Menu?>
+<?import javafx.scene.control.MenuItem?>
+<?import javafx.scene.canvas.Canvas?>
+
+<BorderPane xmlns:fx="http://javafx.com/fxml/1"
+	fx:controller="edu.neumont.kinsey.pong.view.PongViewController"
+	stylesheets="PongView.css">
+
+	<top>
+		<MenuBar>
+			<Menu text="Game">
+				<MenuItem text="Restart" onAction="#onRestartAction" />
+				<MenuItem text="Exit" onAction="#onExitAction" />
+			</Menu>
+			<Menu text="Help">
+				<MenuItem text="About" onAction="#onAboutAction" />
+			</Menu>
+		</MenuBar>
+	</top>
+
+	<center>
+		<Canvas fx:id="pongCanvas" width="1280" height="720"
+			onKeyPressed="#onKeyPressed" onMousePressed="#onMousePressed" onMouseReleased="#onMouseReleased"/>
+	</center>
+
+</BorderPane>
+
